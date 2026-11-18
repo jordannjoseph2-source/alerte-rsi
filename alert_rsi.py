@@ -9,6 +9,18 @@ import yfinance as yf
 ACTIFS = {
     "OR (XAUUSD)": "GC=F",
     "EURUSD": "EURUSD=X",
+    "GBPUSD": "GBPUSD=X",
+    "USDJPY": "USDJPY=X",
+    "BTC": "BTC-USD",
+    "ETH": "ETH-USD",
+    "NASDAQ": "^IXIC",
+    "S&P 500": "^GSPC",
+    "DAX": "^GDAXI",
+    "CAC 40": "^FCHI",
+    "PETROLE": "CL=F",
+    "APPLE": "AAPL",
+    "TESLA": "TSLA",
+    "NVIDIA": "NVDA",
 }
 PERIODE_RSI = 14
 SURACHETE = 70
