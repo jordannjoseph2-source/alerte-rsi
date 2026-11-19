@@ -28,7 +28,8 @@ SURVENDU = 30
 INTERVALLE = "15m"
 DUREE_BOUGIE = timedelta(minutes=15)
 # Ignore les signaux trop vieux (marché fermé, week-end)
-AGE_MAX = timedelta(minutes=35)
+AGE_MAX = timedelta(minutes=80)
+LOOKBACK = 5  # nombre de bougies closes examinées
 
 
 def rsi(close: pd.Series, n: int = PERIODE_RSI) -> pd.Series:
@@ -61,22 +62,30 @@ def verifier(nom: str, symbole: str) -> None:
         return
     close = df["Close"].squeeze().dropna()
     valeurs = rsi(close)
-    # La dernière ligne est la bougie en cours : on prend les deux bougies closes d'avant
-    actuel = valeurs.iloc[-2]
-    precedent = valeurs.iloc[-3]
-    cloture = close.index[-2].to_pydatetime() + DUREE_BOUGIE
-    if cloture.tzinfo is None:
-        cloture = cloture.replace(tzinfo=timezone.utc)
-    age = datetime.now(timezone.utc) - cloture
-    print(f"{nom}: RSI {precedent:.1f} -> {actuel:.1f} (bougie close il y a {age})")
+    maintenant = datetime.now(timezone.utc)
+    print(f"{nom}: RSI {valeurs.iloc[-3]:.1f} -> {valeurs.iloc[-2]:.1f}")
 
-    if age > AGE_MAX:
-        print(f"{nom}: données trop anciennes, marché probablement fermé")
-        return
-    if precedent < SURACHETE <= actuel:
-        telegram(f"🔴 {nom} SURACHETÉ : RSI {actuel:.1f} (>{SURACHETE}) en {INTERVALLE}")
-    elif precedent > SURVENDU >= actuel:
-        telegram(f"🟢 {nom} SURVENDU : RSI {actuel:.1f} (<{SURVENDU}) en {INTERVALLE}")
+    # On examine les dernières bougies closes (la toute dernière est en cours)
+    for i in range(-LOOKBACK - 1, -1):
+        actuel = valeurs.iloc[i]
+        precedent = valeurs.iloc[i - 1]
+        cloture = close.index[i].to_pydatetime() + DUREE_BOUGIE
+        if cloture.tzinfo is None:
+            cloture = cloture.replace(tzinfo=timezone.utc)
+        age = maintenant - cloture
+        if age > AGE_MAX:
+            continue
+        minutes = int(age.total_seconds() // 60)
+        if precedent < SURACHETE <= actuel:
+            telegram(
+                f"🔴 {nom} SURACHETÉ : RSI {actuel:.1f} (>{SURACHETE}) "
+                f"en {INTERVALLE}, il y a {minutes} min"
+            )
+        elif precedent > SURVENDU >= actuel:
+            telegram(
+                f"🟢 {nom} SURVENDU : RSI {actuel:.1f} (<{SURVENDU}) "
+                f"en {INTERVALLE}, il y a {minutes} min"
+            )
 
 
 def main() -> None:
